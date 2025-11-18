@@ -1,12 +1,22 @@
 import React, { useEffect, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useLocation } from 'react-router-dom'
 import products from '../data/products.json'
+import games from '../data/games.json'
 import SellerCard from '../components/SellerCard'
 import ProductCard from '../components/ProductCard'
 
 export default function ProductDetail(){
   const { id } = useParams()
-  const product = (products as any[]).find(p=>p.id === id)
+  const location = useLocation()
+  
+  // Oyun sayfası mı kontrol et
+  const isGamePage = location.pathname.startsWith('/oyun/')
+  
+  // Oyun veya ilan ürününü bul
+  const product = isGamePage 
+    ? (games as any[]).find(p => p.id === id)
+    : (products as any[]).find(p => p.id === id)
+  
   const [mainIdx, setMainIdx] = useState(0)
 
   // Category name mapping
@@ -24,34 +34,54 @@ export default function ProductDetail(){
     return categoryMap[category] || category
   }
 
-  if(!product) return <div>Ürün bulunamadı. <Link to="/">Ana sayfa</Link></div>
+  if(!product) return <div>Ürün bulunamadı. <Link to={isGamePage ? "/tek-oyunculu" : "/"}>Ana sayfa</Link></div>
 
-  const images = product.images || [product.image]
-  const similar = (products as any[]).filter(p=>p.category === product.category && p.id !== product.id).slice(0,4)
-  const [announce, setAnnounce] = useState(`Slayt 1 / ${images.length}`)
+  const images = isGamePage ? [] : (product.images || [product.image])
+  const similar = isGamePage
+    ? (games as any[]).filter(p => p.platform === product.platform && p.id !== product.id).slice(0, 4)
+    : (products as any[]).filter(p => p.category === product.category && p.id !== product.id).slice(0, 4)
+  const [announce, setAnnounce] = useState(`Slayt 1 / ${images.length || 1}`)
 
   useEffect(()=>{
-    setAnnounce(`${mainIdx + 1} / ${images.length} gösteriliyor`)
-  },[mainIdx, images.length])
+    if (!isGamePage) {
+      setAnnounce(`${mainIdx + 1} / ${images.length} gösteriliyor`)
+    }
+  },[mainIdx, images.length, isGamePage])
 
   return (
     <div className="min-h-screen pb-12" style={{ background: 'var(--bg)' }}>
       <div className="max-w-7xl mx-auto px-4 py-6">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 mb-6 text-sm">
-          <Link to="/" className="hover:underline" style={{ color: 'var(--muted)' }}>Ana Sayfa</Link>
+          <Link to={isGamePage ? "/tek-oyunculu" : "/"} className="hover:underline" style={{ color: 'var(--muted)' }}>Ana Sayfa</Link>
           <span style={{ color: 'var(--muted)' }}>/</span>
-          <Link to="/ilanlar" className="hover:underline" style={{ color: 'var(--muted)' }}>İlanlar</Link>
-          {product.category && (
+          {isGamePage ? (
             <>
-              <span style={{ color: 'var(--muted)' }}>/</span>
-              <Link 
-                to={`/ilanlar?category=${product.category}`} 
-                className="hover:underline capitalize" 
-                style={{ color: 'var(--muted)' }}
-              >
-                {getCategoryName(product.category)}
-              </Link>
+              <Link to="/tek-oyunculu" className="hover:underline" style={{ color: 'var(--muted)' }}>Oyunlar</Link>
+              {product.platform && (
+                <>
+                  <span style={{ color: 'var(--muted)' }}>/</span>
+                  <span className="font-medium capitalize" style={{ color: 'var(--muted)' }}>
+                    {product.platform}
+                  </span>
+                </>
+              )}
+            </>
+          ) : (
+            <>
+              <Link to="/ilanlar" className="hover:underline" style={{ color: 'var(--muted)' }}>İlanlar</Link>
+              {product.category && (
+                <>
+                  <span style={{ color: 'var(--muted)' }}>/</span>
+                  <Link 
+                    to={`/ilanlar?category=${product.category}`} 
+                    className="hover:underline capitalize" 
+                    style={{ color: 'var(--muted)' }}
+                  >
+                    {getCategoryName(product.category)}
+                  </Link>
+                </>
+              )}
             </>
           )}
           <span style={{ color: 'var(--muted)' }}>/</span>
@@ -62,62 +92,91 @@ export default function ProductDetail(){
 
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2">
-            <div className="border rounded-lg overflow-hidden" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
-              <div className="h-96 flex items-center justify-center" style={{ background: 'var(--bg)' }}>
-                <img
-                  src={images[mainIdx]}
-                  alt={product.title}
-                  className="object-contain max-h-96"
-                  tabIndex={0}
-                  onKeyDown={(e)=>{
-                    if(e.key === 'ArrowLeft') setMainIdx(i=> Math.max(0, i-1))
-                    if(e.key === 'ArrowRight') setMainIdx(i=> Math.min(images.length-1, i+1))
-                  }}
-                />
-              </div>
-              <div className="flex gap-2 p-3 overflow-x-auto scrollbar-hide">
-                {images.map((src:string, idx:number)=>(
-                  <button
-                    key={idx}
-                    onClick={()=>setMainIdx(idx)}
-                    aria-label={`Görüntü ${idx+1} seç`}
-                    aria-pressed={idx===mainIdx}
-                    className={`thumb-btn w-24 h-16 border rounded overflow-hidden focus:outline-none transition-all ${idx===mainIdx? 'ring-2 scale-105':''}`}
-                    style={{ 
-                      borderColor: idx === mainIdx ? 'var(--accent)' : 'var(--border)',
-                      background: 'var(--bg)'
-                    }}
+            {!isGamePage && images.length > 0 ? (
+              <div className="border rounded-lg overflow-hidden" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+                <div className="h-96 flex items-center justify-center" style={{ background: 'var(--bg)' }}>
+                  <img
+                    src={images[mainIdx]}
+                    alt={product.title}
+                    className="object-contain max-h-96"
+                    tabIndex={0}
                     onKeyDown={(e)=>{
-                      if(e.key === 'ArrowLeft'){
-                        const nextIdx = idx > 0 ? idx - 1 : 0;
-                        (e.target as HTMLButtonElement).blur();
-                        setMainIdx(nextIdx);
-                      }
-                      if(e.key === 'ArrowRight'){
-                        const nextIdx = idx < images.length - 1 ? idx + 1 : images.length - 1;
-                        (e.target as HTMLButtonElement).blur();
-                        setMainIdx(nextIdx);
-                      }
+                      if(e.key === 'ArrowLeft') setMainIdx(i=> Math.max(0, i-1))
+                      if(e.key === 'ArrowRight') setMainIdx(i=> Math.min(images.length-1, i+1))
                     }}
-                    title={`Görüntü ${idx+1}`}
-                  >
-                    <img src={src} alt={`thumb-${idx}`} className="w-full h-full object-cover" />
-                  </button>
-                ))}
+                  />
+                </div>
+                <div className="flex gap-2 p-3 overflow-x-auto scrollbar-hide">
+                  {images.map((src:string, idx:number)=>(
+                    <button
+                      key={idx}
+                      onClick={()=>setMainIdx(idx)}
+                      aria-label={`Görüntü ${idx+1} seç`}
+                      aria-pressed={idx===mainIdx}
+                      className={`thumb-btn w-24 h-16 border rounded overflow-hidden focus:outline-none transition-all ${idx===mainIdx? 'ring-2 scale-105':''}`}
+                      style={{ 
+                        borderColor: idx === mainIdx ? 'var(--accent)' : 'var(--border)',
+                        background: 'var(--bg)'
+                      }}
+                      onKeyDown={(e)=>{
+                        if(e.key === 'ArrowLeft'){
+                          const nextIdx = idx > 0 ? idx - 1 : 0;
+                          (e.target as HTMLButtonElement).blur();
+                          setMainIdx(nextIdx);
+                        }
+                        if(e.key === 'ArrowRight'){
+                          const nextIdx = idx < images.length - 1 ? idx + 1 : images.length - 1;
+                          (e.target as HTMLButtonElement).blur();
+                          setMainIdx(nextIdx);
+                        }
+                      }}
+                      title={`Görüntü ${idx+1}`}
+                    >
+                      <img src={src} alt={`thumb-${idx}`} className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+                {/* announce current slide for screen readers */}
+                <div aria-live="polite" className="sr-only">{announce}</div>
               </div>
-              {/* announce current slide for screen readers */}
-              <div aria-live="polite" className="sr-only">{announce}</div>
-            </div>
+            ) : isGamePage ? (
+              <div className="border rounded-lg overflow-hidden" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+                <div className="h-96 flex items-center justify-center" style={{ background: 'var(--bg)' }}>
+                  <div className="text-center">
+                    <svg className="w-24 h-24 mx-auto mb-4 opacity-50" style={{ color: 'var(--muted)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <p className="text-lg font-semibold" style={{ color: 'var(--text)' }}>{product.title}</p>
+                    <p className="text-sm mt-2" style={{ color: 'var(--muted)' }}>Platform: {product.platform}</p>
+                  </div>
+                </div>
+              </div>
+            ) : null}
 
             <h1 className="text-2xl font-bold mt-6" style={{ color: 'var(--text)' }}>{product.title}</h1>
-            <div className="text-sm mt-1" style={{ color: 'var(--muted)' }}>Satıcı: {product.seller}</div>
+            {!isGamePage && product.seller && (
+              <div className="text-sm mt-1" style={{ color: 'var(--muted)' }}>Satıcı: {product.seller}</div>
+            )}
+            {isGamePage && product.platform && (
+              <div className="text-sm mt-1" style={{ color: 'var(--muted)' }}>Platform: {product.platform}</div>
+            )}
             
             <div className="mt-6 p-4 rounded-lg" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
               <h2 className="font-semibold mb-2" style={{ color: 'var(--text)' }}>Ürün Açıklaması</h2>
               <p style={{ color: 'var(--muted)' }}>
-                Detaylı ürün açıklaması ve özellikleri. Bu ürün güvenilir satıcımız {product.seller} tarafından sunulmaktadır. 
-                Teslimat bilgisi, garanti koşulları ve kullanım talimatları ile birlikte gönderilir.
-                {product.deliveryBadge && ` ${product.deliveryBadge}`}
+                {isGamePage ? (
+                  <>
+                    {product.title} - {product.platform} platformu için dijital oyun kodu. Anında teslimat garantisi ile güvenli alışveriş. 
+                    Oyun kodu satın alma işleminden hemen sonra hesabınıza gönderilir.
+                  </>
+                ) : (
+                  <>
+                    Detaylı ürün açıklaması ve özellikleri. Bu ürün güvenilir satıcımız {product.seller} tarafından sunulmaktadır. 
+                    Teslimat bilgisi, garanti koşulları ve kullanım talimatları ile birlikte gönderilir.
+                    {product.deliveryBadge && ` ${product.deliveryBadge}`}
+                  </>
+                )}
               </p>
             </div>
 
@@ -169,9 +228,11 @@ export default function ProductDetail(){
               Favorilere Ekle
             </button>
 
-            <div className="mt-6 pt-6 border-t" style={{ borderColor: 'var(--border)' }}>
-              <SellerCard seller={product.seller} rating={4.8} />
-            </div>
+            {!isGamePage && product.seller && (
+              <div className="mt-6 pt-6 border-t" style={{ borderColor: 'var(--border)' }}>
+                <SellerCard seller={product.seller} rating={4.8} />
+              </div>
+            )}
             
             <div className="mt-6 p-4 rounded-lg text-sm" style={{ background: 'var(--bg)' }}>
               <div className="flex items-center gap-2 mb-2" style={{ color: 'var(--text)' }}>

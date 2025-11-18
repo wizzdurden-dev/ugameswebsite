@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import MobileNav from './MobileNav'
 import Icon from './Icon'
 
@@ -23,8 +23,22 @@ export default function Header(){
   },[theme])
 
   const navigate = useNavigate()
+  const location = useLocation()
+  
+  // Tek oyunculu sayfasında mıyız?
+  const isSinglePlayerPage = location.pathname === '/tek-oyunculu' || 
+                              location.pathname.startsWith('/tek-oyunculu') ||
+                              location.pathname.startsWith('/oyun-ara') ||
+                              location.pathname.startsWith('/oyun/')
 
-  const categories = [
+  // Tek oyunculu sayfasında farklı kategoriler göster
+  const categories = isSinglePlayerPage ? [
+    { name: 'PC Oyunları', path: '/oyun-ara?platform=pc', icon: 'gamepad', color: 'from-blue-500 to-cyan-500' },
+    { name: 'PlayStation Oyunları', path: '/oyun-ara?platform=playstation', icon: 'gamepad', color: 'from-blue-500 to-indigo-500' },
+    { name: 'Xbox Oyunları', path: '/oyun-ara?platform=xbox', icon: 'gamepad', color: 'from-green-500 to-emerald-500' },
+    { name: 'İndirimdeki Oyunlar', path: '/oyun-ara?category=discounted', icon: 'fire', color: 'from-red-500 to-orange-500' },
+    { name: 'Çok Satanlar', path: '/oyun-ara?category=bestsellers', icon: 'crown', color: 'from-yellow-500 to-orange-500' }
+  ] : [
     { name: 'Sosyal Medya', path: '/ilanlar?category=sosyal-medya', icon: 'mobile', color: 'from-pink-500 to-rose-500' },
     { name: 'PUBG', path: '/ilanlar?category=pubg', icon: 'gamepad', color: 'from-orange-500 to-red-500' },
     { name: 'Valorant', path: '/ilanlar?category=valorant', icon: 'valorant', color: 'from-red-500 to-pink-500' },
@@ -38,7 +52,12 @@ export default function Header(){
   function onSearchSubmit(e:React.KeyboardEvent<HTMLInputElement>){
     if(e.key === 'Enter'){
       const q = (e.target as HTMLInputElement).value.trim()
-      navigate(`/ilanlar${q ? `?search=${encodeURIComponent(q)}` : ''}`)
+      // Tek oyunculu sayfasındaysa oyun arama sayfasına yönlendir
+      if(isSinglePlayerPage) {
+        navigate(`/oyun-ara${q ? `?search=${encodeURIComponent(q)}` : ''}`)
+      } else {
+        navigate(`/ilanlar${q ? `?search=${encodeURIComponent(q)}` : ''}`)
+      }
     }
   }
 
@@ -162,14 +181,26 @@ export default function Header(){
                           <div className="flex-1 relative z-10">
                             <div className="font-semibold text-sm">{cat.name}</div>
                             <div className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>
-                              {cat.name === 'Sosyal Medya' && 'Instagram, TikTok, Twitter'}
-                              {cat.name === 'PUBG' && 'UC, Hesaplar, Skinler'}
-                              {cat.name === 'Valorant' && 'VP, Hesaplar, Skinler'}
-                              {cat.name === 'LoL' && 'RP, Hesaplar, Skinler'}
-                              {cat.name === 'CS2' && 'Hesaplar, Skinler, Prime'}
-                              {cat.name === 'İlan Pazarı' && 'Tüm İlanlar'}
-                              {cat.name === 'Günün Fırsatları' && 'Sınırlı Süreli İndirimler'}
-                              {cat.name === 'Çekilişler' && 'Ücretsiz Kazanç Fırsatları'}
+                              {isSinglePlayerPage ? (
+                                <>
+                                  {cat.name === 'PC Oyunları' && 'Steam, Epic Games, Origin'}
+                                  {cat.name === 'PlayStation Oyunları' && 'PS4, PS5 Oyunları'}
+                                  {cat.name === 'Xbox Oyunları' && 'Xbox One, Series X/S'}
+                                  {cat.name === 'İndirimdeki Oyunlar' && 'Sınırlı Süreli İndirimler'}
+                                  {cat.name === 'Çok Satanlar' && 'En Popüler Oyunlar'}
+                                </>
+                              ) : (
+                                <>
+                                  {cat.name === 'Sosyal Medya' && 'Instagram, TikTok, Twitter'}
+                                  {cat.name === 'PUBG' && 'UC, Hesaplar, Skinler'}
+                                  {cat.name === 'Valorant' && 'VP, Hesaplar, Skinler'}
+                                  {cat.name === 'LoL' && 'RP, Hesaplar, Skinler'}
+                                  {cat.name === 'CS2' && 'Hesaplar, Skinler, Prime'}
+                                  {cat.name === 'İlan Pazarı' && 'Tüm İlanlar'}
+                                  {cat.name === 'Günün Fırsatları' && 'Sınırlı Süreli İndirimler'}
+                                  {cat.name === 'Çekilişler' && 'Ücretsiz Kazanç Fırsatları'}
+                                </>
+                              )}
                             </div>
                           </div>
                           
@@ -182,14 +213,14 @@ export default function Header(){
                     
                     <div className="p-3 border-t" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
                       <Link 
-                        to="/ilanlar" 
+                        to={isSinglePlayerPage ? "/tek-oyunculu" : "/ilanlar"} 
                         className="block text-center py-2.5 px-4 rounded-lg font-semibold text-sm transition-all hover:scale-[1.02] hover:shadow-lg"
                         style={{ 
                           background: 'var(--accent)',
                           color: 'white'
                         }}
                       >
-                        Tüm İlanları Gör →
+                        {isSinglePlayerPage ? 'Tüm Oyunları Gör →' : 'Tüm İlanları Gör →'}
                       </Link>
                     </div>
                   </div>
@@ -198,8 +229,8 @@ export default function Header(){
 
               {/* Tüm Kategoriler - Orijinal linkler */}
               {categories.map((cat) => {
-                // CS2 için özel dropdown
-                if (cat.name === 'CS2') {
+                // CS2 için özel dropdown - sadece ilan pazarı sayfalarında
+                if (cat.name === 'CS2' && !isSinglePlayerPage) {
                   return (
                     <div 
                       key={cat.name}
